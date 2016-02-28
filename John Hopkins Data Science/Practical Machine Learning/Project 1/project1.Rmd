@@ -1,0 +1,65 @@
+---
+title: "project1.Rmd"
+output: html_document
+---
+
+XXX
+
+```{r}
+library(caret)
+library(doMC)
+registerDoMC(cores = 8)
+set.seed(42)
+```
+Load files, making sure to set empty strings to NA (there are a lot of them).
+```{r}
+pmlTrainRaw<-read.csv("pml-training.csv",na.strings=c("NA",""))
+pmlTest<-read.csv("pml-testing.csv",na.strings=c("NA",""))
+```
+First seven rows have metadata for the rows, which is unlikely to help our model (unless perhaps one particular person gets hurt more than others...).  Additionally, columns either have a large number of NAs or zero, so stick to the complete ones.
+```{r}
+pmlTrainRaw<-pmlTrainRaw[,8:160]
+pmlTest<-pmlTest[,8:160]
+
+nona<-apply(is.na(pmlTrainRaw),2,sum)==0
+pmlTrainRaw<-pmlTrainRaw[,nona]
+pmlTest<-pmlTest[,nona]
+```
+Separate out a validation set so that we don't pollute the test set.
+```{r}
+inTrain<-createDataPartition(pmlTrainRaw$classe,p=0.75,list=FALSE)
+pmlTrain<-pmlTrainRaw[inTrain,]
+pmlValidate<-pmlTrainRaw[-inTrain,]
+```
+Let's try a decision tree!
+```{r}
+modFitDt<-train(classe ~ .,data=pmlTrain,method="rpart")
+
+predTrain<-predict(modFitDt,newdata=pmlTrain)
+confusionMatrix(predTrain,pmlTrain$classe)$overall[1]
+
+predValidate<-predict(modFitDt,newdata=pmlValidate)
+confusionMatrix(predValidate,pmlValidate$classe)$overall[1]
+```
+Let's try LDA!
+```{r}
+modFitDt<-train(classe ~ .,data=pmlTrain,method="lda")
+
+predTrain<-predict(modFitDt,newdata=pmlTrain)
+confusionMatrix(predTrain,pmlTrain$classe)$overall[1]
+
+predValidate<-predict(modFitDt,newdata=pmlValidate)
+confusionMatrix(predValidate,pmlValidate$classe)$overall[1]
+```
+Let's try random forests!
+```{r}
+modFitRf<-train(classe ~ .,data=pmlTrain,method="rf")
+
+predTrain<-predict(modFitRf,newdata=pmlTrain)
+confusionMatrix(predTrain,pmlTrain$classe)$overall[1]
+
+predValidate<-predict(modFitRf,newdata=pmlValidate)
+confusionMatrix(predValidate,pmlValidate$classe)$overall[1]
+```
+predTest<-predict(modFitRf,newdata=pmlTest)
+predTest

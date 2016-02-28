@@ -1,0 +1,84 @@
+---
+title: "Effect of Transmission Type on Fuel Efficiency"
+author: "Andrew W. Hill"
+date: "August 21, 2015"
+output: pdf_document
+---
+
+# Executive Summary
+Although upon initial inspection, there appears to be a correlation between transmission type and gas mileage, upon further investigation it becomes clear that this is only due to commonalities between cars with matching transmission types.  Once engine and vehicle characteristics are accounted for, it becomes clear that there is no significant relationship between transmission type and gas mileage.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+require(datasets)
+data("mtcars")
+mtcars$amf=factor(mtcars$am,levels=0:1,labels=c("Automatic","Manual"))
+```
+# Initial Exploration
+We immediately see a difference in MPG between cars with manual transmissions and those with automatic transmissions.  However it is not clear whether this is due to the transmission itself, or due to a relationship with other variables common to cars with particular transmissions.
+
+```{r echo=FALSE}
+par(pin=c(4,2),cex.lab=0.8)
+plot(mpg~amf,data=mtcars,xlab="",ylab="Gas mileage")
+```
+
+# Confounding factors
+To determine confounding variables, we explore what sorts of cars have automatic and manual transmissions.  Immediately wee see relationships between engine characteristics (horsepower, displacement, number of cylinders, number of carburetors) that indicate that the more powerful cars use automatic transmissions.  To limit the number of factors in our final model, we test to see what difference refining our model makes.
+```{r echo=FALSE}
+fit1<-lm(mpg ~ amf, data=mtcars)
+fit2<-lm(mpg ~ amf + hp, data=mtcars)
+fit3<-lm(mpg ~ amf + hp + disp, data=mtcars)
+fit4<-lm(mpg ~ amf + hp + disp + factor(cyl), data=mtcars)
+fit5<-lm(mpg ~ amf + hp + disp + factor(cyl) + factor(carb), data=mtcars)
+anova(fit1,fit2,fit3,fit4,fit5)
+```
+From this we see that the power of the engines does make a significant difference to the relationship between gas mileage and the type of transmission of the car, but once that is taken into account, the other engine characteristics add little value.
+
+Looking at the characteristics of the vehicle itself, we see a couple interesting points.  Although there is an apparent relationship between the type of transmission and the engine characteristics, there is not a relationship between the type of transmission and the quarter mile time.  Investigating further, we see that there does appear to be a connection between the transmission type and the weight of the car.  We can investigate into whether we should take weight into account with our model.
+```{r echo=FALSE}
+fit6<-lm(mpg ~ amf + hp, data=mtcars)
+fit7<-lm(mpg ~ amf + hp + wt, data=mtcars)
+fit8<-lm(mpg ~ amf + hp + wt + qsec, data=mtcars)
+anova(fit6,fit7,fit8)
+```
+From this, we can see that there is an additional effect towards gas mileage contributed by the weight of the vehicle.  We additionally confirm that the quarter mile time adds no further value.
+
+# Final model
+We also choose to ignore number of gears and final drive ratio from our final model as they are inherently tied to the transmission type.  This leaves us with the final model as follows:
+```{r}
+fit<-lm(mpg ~ amf + hp + wt, data=mtcars)
+summary(fit)$coef
+```
+When we examine this, we see that there is no significant relationship between gas mileage and transmission type (P > 0.1), once factors such as vehicle weight and engine power are taken into account.  Analysis of the residuals show no appreciable pattern, and a Q-Q plot indicates a normally distributed variation, consistent with random noise.
+
+# Appendix
+```{r echo=FALSE}
+par(mfrow=c(1,2))
+plot(hp ~ amf,data=mtcars,xlab="",ylab="Engine output (hp)")
+plot(disp ~ amf,data=mtcars,xlab="",ylab="Engine displacement (cu in)")
+par(mfrow=c(1,2))
+plot(factor(cyl) ~ amf,data=mtcars,xlab="",ylab="Number of cylinders")
+plot(factor(carb) ~ amf,data=mtcars,xlab="",ylab="Number of carburetors")
+```
+
+```{r echo=FALSE}
+par(mfrow=c(1,2))
+plot(qsec~amf,data=mtcars,xlab="",ylab="Quarter mile time (s)")
+plot(wt~amf,data=mtcars,xlab="",ylab="Vehicle weight (1000 lb)")
+```
+
+```{r echo=FALSE}
+fit_auto=lm(mtcars$wt[mtcars$am==0]~mtcars$hp[mtcars$am==0])
+fit_manual=lm(mtcars$wt[mtcars$am==1]~mtcars$hp[mtcars$am==1])
+plot(wt~hp,data=mtcars,ylab="Vehicle weight (1000 lb)",xlab="Engine output (hp)",col=amf)
+abline(fit_auto,col="black")
+abline(fit_manual,col="red")
+legend('bottomright',legend=levels(mtcars$amf),col=1:2,cex = 0.8, pch=1)
+#r2_auto<-parse(text=paste("r^2 == ",round(summary(fit_auto)$r.squared,3)))
+#r2_manual<-parse(text=paste("r^2 == ",round(summary(fit_manual)$r.squared,3)))
+#text(x=175,y=4.7,labels=r2_auto,col="black")
+#text(x=200,y=2,labels=r2_manual,col="red")
+```
+
+```{r echo=FALSE}
+par(mfrow=c(1,2))
+plot(fit)
+```
